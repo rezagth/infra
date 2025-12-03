@@ -1,21 +1,35 @@
 ---
 # Installation de Wazuh avec le script d'installation all-in-one
 
-- name: Télécharger le script d'installation Wazuh all-in-one
-  get_url:
-    url: "https://packages.wazuh.com/{{ wazuh_major_version }}/wazuh-install.sh"
-    dest: /tmp/wazuh-install.sh
-    mode: '0755'
-  register: download_script
+- name: Vérifier si Wazuh est déjà installé
+  stat:
+    path: /var/ossec/bin/wazuh-control
+  register: wazuh_already_installed
+
+- name: Télécharger le script d'installation Wazuh all-in-one (avec curl)
+  shell: |
+    curl -sO https://packages.wazuh.com/{{ wazuh_major_version }}/wazuh-install.sh
+    chmod +x wazuh-install.sh
+  args:
+    chdir: /tmp
+    creates: /tmp/wazuh-install.sh
+  when: not wazuh_already_installed.stat.exists
+
+- name: Vérifier que le script a bien été téléchargé
+  stat:
+    path: /tmp/wazuh-install.sh
+  register: script_exists
+  when: not wazuh_already_installed.stat.exists
 
 - name: Exécuter l'installation all-in-one de Wazuh
   shell: |
     bash /tmp/wazuh-install.sh -a -i
   args:
-    creates: /var/ossec/bin/wazuh-control
+    chdir: /tmp
   register: wazuh_install
   async: 1800
   poll: 10
+  when: not wazuh_already_installed.stat.exists and script_exists.stat.exists
 
 - name: Attendre que tous les services démarrent
   wait_for:
@@ -33,7 +47,9 @@
     content: "{{ wazuh_install.stdout }}"
     dest: /root/wazuh-install-credentials.txt
     mode: '0600'
-  when: wazuh_install.stdout is defined
+  when: 
+    - wazuh_install.stdout is defined
+    - not wazuh_already_installed.stat.exists
 
 - name: Extraire le mot de passe admin
   shell: |
