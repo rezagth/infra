@@ -1,0 +1,37 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Configuration de base
+  config.vm.box = "ubuntu/jammy64"
+  
+  # Configuration réseau privé
+  config.vm.network "private_network", type: "dhcp"
+  
+  # Synchronisation de dossiers
+  config.vm.synced_folder ".", "/vagrant"
+  
+  # Configuration VirtualBox
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "2048"
+    vb.cpus = 2
+  end
+  
+  # VM 1 - Serveur principal
+  config.vm.define "server01" do |server|
+    server.vm.hostname = "server01"
+    server.vm.network "private_network", ip: "192.168.56.10"
+  end
+  
+  # VM 2 - Agent de surveillance
+  config.vm.define "agent01" do |agent|
+    agent.vm.hostname = "agent01"
+    agent.vm.network "private_network", ip: "192.168.56.11"
+  end
+  
+  # Provisionner avec Ansible (optionnel - peut être exécuté manuellement)
+  # config.vm.provision "ansible" do |ansible|
+  #   ansible.playbook = "ansible/playbooks/site.yml"
+  #   ansible.inventory_path = "ansible/inventories/hosts.ini"
+  # end
+end

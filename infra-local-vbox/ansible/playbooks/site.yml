@@ -1,0 +1,40 @@
+---
+- name: Configuration complète de l'infrastructure
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Mise à jour du cache APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Vérification de la connectivité
+      ping:
+
+  roles:
+    - hardening
+
+- name: Configuration des serveurs
+  hosts: servers
+  become: true
+
+  roles:
+    - wazuh
+
+- name: Configuration des agents
+  hosts: agents
+  become: true
+
+  roles:
+    - edr
+    - wazuh
+
+  post_tasks:
+    - name: Redémarrage si nécessaire
+      reboot:
+        msg: "Redémarrage après configuration"
+        test_command: uptime
+      when: ansible_reboot_required is defined and ansible_reboot_required

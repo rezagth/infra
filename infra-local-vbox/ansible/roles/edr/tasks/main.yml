@@ -1,0 +1,51 @@
+---
+# Rôle EDR (Endpoint Detection & Response)
+- name: Installation des prérequis EDR
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - curl
+      - gnupg
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Créer le répertoire pour l'agent EDR
+  file:
+    path: /opt/edr-agent
+    state: directory
+    mode: '0755'
+
+- name: Configuration de l'agent EDR
+  copy:
+    dest: /opt/edr-agent/config.yml
+    content: |
+      # Configuration EDR Agent
+      server:
+        host: "{{ edr_server_host | default('192.168.56.10') }}"
+        port: "{{ edr_server_port | default(5000) }}"
+      
+      agent:
+        name: "{{ ansible_hostname }}"
+        tags:
+          - environment:local
+          - type:vagrant
+      
+      monitoring:
+        processes: true
+        network: true
+        files: true
+        registry: false  # Windows only
+      
+      log_level: info
+
+- name: Message d'information
+  debug:
+    msg: "L'agent EDR est configuré. Installation spécifique à l'EDR à compléter selon votre solution (CrowdStrike, SentinelOne, etc.)"
+
+# TODO: Ajouter les tâches spécifiques à votre solution EDR
+# Exemples:
+# - Installation de l'agent depuis un dépôt
+# - Enregistrement auprès du serveur EDR
+# - Configuration des politiques de détection

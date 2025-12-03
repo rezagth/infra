@@ -1,0 +1,78 @@
+---
+# Rôle de durcissement système
+- name: Installation des paquets de sécurité
+  apt:
+    name:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - aide
+      - auditd
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Configuration du pare-feu UFW
+  block:
+    - name: Autoriser SSH
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+
+    - name: Activer UFW
+      ufw:
+        state: enabled
+        policy: deny
+
+- name: Désactivation des services non nécessaires
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: no
+  loop:
+    - avahi-daemon
+    - cups
+  ignore_errors: yes
+
+- name: Configuration des mises à jour automatiques
+  copy:
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+        "${distro_id}:${distro_codename}-security";
+      };
+      Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+      Unattended-Upgrade::MinimalSteps "true";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+      Unattended-Upgrade::Automatic-Reboot "false";
+
+- name: Configuration sysctl pour la sécurité
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: 'net.ipv4.conf.all.rp_filter', value: '1' }
+    - { name: 'net.ipv4.conf.default.rp_filter', value: '1' }
+    - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { name: 'net.ipv4.conf.all.accept_source_route', value: '0' }
+    - { name: 'net.ipv4.conf.default.accept_source_route', value: '0' }
+    - { name: 'kernel.randomize_va_space', value: '2' }
+
+- name: Configuration de Fail2Ban
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+  notify: restart fail2ban
+  when: false  # Template à créer dans templates/
+
+- name: Démarrage des services de sécurité
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - fail2ban
+    - auditd

@@ -1,0 +1,73 @@
+---
+# Rôle Wazuh SIEM
+- name: Installation des prérequis Wazuh
+  apt:
+    name:
+      - curl
+      - apt-transport-https
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Ajout de la clé GPG Wazuh
+  apt_key:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Ajout du dépôt Wazuh
+  apt_repository:
+    repo: "deb https://packages.wazuh.com/4.x/apt/ stable main"
+    state: present
+    filename: wazuh
+  when: ansible_os_family == "Debian"
+
+- name: Déterminer le type d'installation (serveur ou agent)
+  set_fact:
+    wazuh_role: "{{ 'manager' if inventory_hostname in groups['servers'] else 'agent' }}"
+
+- name: Installation de Wazuh Manager (serveurs)
+  apt:
+    name: wazuh-manager
+    state: present
+    update_cache: yes
+  when: 
+    - ansible_os_family == "Debian"
+    - wazuh_role == "manager"
+
+- name: Installation de Wazuh Agent (agents)
+  block:
+    - name: Installation du paquet agent
+      apt:
+        name: wazuh-agent
+        state: present
+        update_cache: yes
+
+    - name: Configuration de l'agent Wazuh
+      lineinfile:
+        path: /var/ossec/etc/ossec.conf
+        regexp: '<address>.*</address>'
+        line: '    <address>{{ wazuh_manager_ip | default("192.168.56.10") }}</address>'
+        insertafter: '<server>'
+
+    - name: Démarrage de l'agent Wazuh
+      systemd:
+        name: wazuh-agent
+        state: started
+        enabled: yes
+  when:
+    - ansible_os_family == "Debian"
+    - wazuh_role == "agent"
+
+- name: Démarrage de Wazuh Manager
+  systemd:
+    name: wazuh-manager
+    state: started
+    enabled: yes
+  when: wazuh_role == "manager"
+
+- name: Affichage du statut
+  debug:
+    msg: "Wazuh {{ wazuh_role }} installé et configuré sur {{ ansible_hostname }}"
