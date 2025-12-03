@@ -1,0 +1,18 @@
+---
+# Variables pour les agents Windows
+
+# Version de l'agent
+wazuh_agent_version: "4.7.0"
+wazuh_agent_revision: "1"
+
+# Manager Wazuh
+wazuh_manager_ip: "192.168.56.10"
+wazuh_manager_port: 1514
+
+# Configuration agent
+wazuh_agent_name: "{{ ansible_hostname }}"
+wazuh_agent_groups: "windows,default"
+wazuh_protocol: "tcp"
+
+# URL MSI
+wazuh_agent_msi_url: "https://packages.wazuh.com/4.x/windows/wazuh-agent-{{ wazuh_agent_version }}-{{ wazuh_agent_revision }}.msi"

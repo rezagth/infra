@@ -1,0 +1,65 @@
+---
+# Rôle wazuh-agent-windows - Installation agent Wazuh sur Windows
+
+- name: Inclure les variables
+  include_vars: main.yml
+
+- name: Vérifier si l'agent Wazuh est déjà installé
+  win_service:
+    name: WazuhSvc
+  register: wazuh_service
+  ignore_errors: yes
+
+- name: Créer le répertoire temporaire
+  win_file:
+    path: C:\temp
+    state: directory
+
+- name: Télécharger l'agent Wazuh Windows
+  win_get_url:
+    url: "{{ wazuh_agent_msi_url }}"
+    dest: "C:\\temp\\wazuh-agent-{{ wazuh_agent_version }}.msi"
+  when: wazuh_service is failed or wazuh_service.state != 'running'
+
+- name: Installer l'agent Wazuh
+  win_package:
+    path: "C:\\temp\\wazuh-agent-{{ wazuh_agent_version }}.msi"
+    arguments: 
+      - /q
+      - WAZUH_MANAGER="{{ wazuh_manager_ip }}"
+      - WAZUH_AGENT_NAME="{{ wazuh_agent_name }}"
+      - WAZUH_REGISTRATION_SERVER="{{ wazuh_manager_ip }}"
+    state: present
+  when: wazuh_service is failed or wazuh_service.state != 'running'
+  register: wazuh_install
+
+- name: Attendre que le service soit créé
+  win_service:
+    name: WazuhSvc
+  register: service_check
+  until: service_check is succeeded
+  retries: 10
+  delay: 5
+  when: wazuh_install is changed
+
+- name: Démarrer le service Wazuh
+  win_service:
+    name: WazuhSvc
+    state: started
+    start_mode: auto
+
+- name: Vérifier le statut du service
+  win_service:
+    name: WazuhSvc
+  register: final_service_status
+
+- name: Afficher le statut
+  debug:
+    msg:
+      - "╔══════════════════════════════════════════════════════════╗"
+      - "║     Agent Wazuh Windows installé et démarré              ║"
+      - "║                                                           ║"
+      - "║  Hostname: {{ ansible_hostname }}                       ║"
+      - "║  Manager: {{ wazuh_manager_ip }}                        ║"
+      - "║  Service: {{ final_service_status.state }}              ║"
+      - "╚══════════════════════════════════════════════════════════╝"

@@ -6,30 +6,38 @@
     path: /var/ossec/bin/wazuh-control
   register: wazuh_already_installed
 
-- name: Télécharger le script d'installation Wazuh all-in-one (avec curl)
+- name: Télécharger le script d'installation Wazuh all-in-one
   shell: |
-    curl -sO https://packages.wazuh.com/{{ wazuh_major_version }}/wazuh-install.sh
-    chmod +x wazuh-install.sh
+    wget https://packages.wazuh.com/4.7/wazuh-install.sh -O /tmp/wazuh-install.sh
+    chmod +x /tmp/wazuh-install.sh
   args:
-    chdir: /tmp
     creates: /tmp/wazuh-install.sh
   when: not wazuh_already_installed.stat.exists
 
-- name: Vérifier que le script a bien été téléchargé
-  stat:
-    path: /tmp/wazuh-install.sh
-  register: script_exists
+- name: Vérifier que le script a bien été téléchargé et est valide
+  shell: |
+    head -1 /tmp/wazuh-install.sh | grep -q "^#!/bin"
+  register: script_valid
+  changed_when: false
+  failed_when: false
   when: not wazuh_already_installed.stat.exists
+
+- name: Afficher erreur si le script n'est pas valide
+  fail:
+    msg: "Le script téléchargé n'est pas un script shell valide. Vérifiez la connectivité internet."
+  when: 
+    - not wazuh_already_installed.stat.exists
+    - script_valid.rc != 0
 
 - name: Exécuter l'installation all-in-one de Wazuh
   shell: |
-    bash /tmp/wazuh-install.sh -a -i
+    bash /tmp/wazuh-install.sh -a -i 2>&1 | tee /tmp/wazuh-install.log
   args:
     chdir: /tmp
   register: wazuh_install
   async: 1800
   poll: 10
-  when: not wazuh_already_installed.stat.exists and script_exists.stat.exists
+  when: not wazuh_already_installed.stat.exists and (script_valid.rc is not defined or script_valid.rc == 0)
 
 - name: Attendre que tous les services démarrent
   wait_for:
@@ -41,6 +49,7 @@
     - 55000 # API
     - 1514  # Manager
     - 443   # Dashboard
+  when: not wazuh_already_installed.stat.exists
 
 - name: Sauvegarder les credentials d'installation
   copy:
@@ -53,14 +62,18 @@
 
 - name: Extraire le mot de passe admin
   shell: |
-    grep -oP 'password: \K.*' /root/wazuh-install-credentials.txt | head -1
+    if [ -f /root/wazuh-install-credentials.txt ]; then
+      grep -oP 'password: \K.*' /root/wazuh-install-credentials.txt | head -1
+    else
+      echo "admin"
+    fi
   register: extracted_password
   changed_when: false
   failed_when: false
 
 - name: Définir le mot de passe récupéré
   set_fact:
-    wazuh_dashboard_password: "{{ extracted_password.stdout | default('SecurePassword123!') }}"
+    wazuh_dashboard_password: "{{ extracted_password.stdout | default('admin') }}"
 
 - name: Afficher les informations d'accès
   debug:

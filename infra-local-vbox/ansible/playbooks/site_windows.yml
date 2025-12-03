@@ -1,0 +1,114 @@
+---
+# ========================================
+# Playbook Principal - Infrastructure Wazuh avec Windows
+# ========================================
+
+# Phase 1: Configuration serveur Wazuh (Linux)
+- name: Configuration de base - Serveur Wazuh
+  hosts: wazuh_servers
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Mise à jour du cache APT
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Vérification de la connectivité
+      ping:
+
+    - name: Afficher les informations de l'hôte
+      debug:
+        msg:
+          - "Hostname: {{ ansible_hostname }}"
+          - "IP: {{ ansible_default_ipv4.address }}"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+  roles:
+    - hardening
+
+# Phase 2: Déploiement du serveur Wazuh
+- name: Installation du serveur Wazuh
+  hosts: wazuh_servers
+  become: true
+  gather_facts: true
+
+  roles:
+    - wazuh-server
+
+  post_tasks:
+    - name: Attendre que le serveur soit complètement opérationnel
+      wait_for:
+        port: "{{ item }}"
+        delay: 5
+        timeout: 300
+      loop:
+        - 1514   # Agent connection
+        - 1515   # Agent enrollment
+        - 55000  # API
+        - 9200   # Indexer
+        - 443    # Dashboard
+
+    - name: Afficher le message de succès
+      debug:
+        msg:
+          - "╔══════════════════════════════════════════════════════════╗"
+          - "║    Serveur Wazuh installé et opérationnel !              ║"
+          - "║                                                           ║"
+          - "║    Dashboard: https://{{ ansible_default_ipv4.address }} ║"
+          - "║    Prêt à recevoir les agents...                         ║"
+          - "╚══════════════════════════════════════════════════════════╝"
+
+# Phase 3: Déploiement des agents Wazuh Windows
+- name: Installation des agents Wazuh sur Windows
+  hosts: wazuh_agents_windows
+  gather_facts: true
+
+  roles:
+    - wazuh-agent-windows
+
+  post_tasks:
+    - name: Vérifier le statut du service
+      win_service:
+        name: WazuhSvc
+      register: agent_service
+
+    - name: Afficher le statut
+      debug:
+        msg: "Agent {{ ansible_hostname }}: Service {{ agent_service.state }}"
+
+# Phase 4: Vérification finale
+- name: Vérification du déploiement complet
+  hosts: wazuh_servers
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Attendre 30 secondes que les agents se connectent
+      pause:
+        seconds: 30
+
+    - name: Lister les agents connectés
+      shell: /var/ossec/bin/agent_control -l
+      register: connected_agents
+      changed_when: false
+
+    - name: Afficher les agents connectés
+      debug:
+        msg: "{{ connected_agents.stdout_lines }}"
+
+    - name: Résumé final
+      debug:
+        msg:
+          - ""
+          - "╔══════════════════════════════════════════════════════════╗"
+          - "║      Déploiement Wazuh Windows Terminé !                 ║"
+          - "╚══════════════════════════════════════════════════════════╝"
+          - ""
+          - "📊 Dashboard: https://{{ ansible_default_ipv4.address }}"
+          - "🔐 Credentials: /root/wazuh-install-credentials.txt"
+          - ""
+          - "Agents:"
+          - "{{ connected_agents.stdout }}"
+          - ""

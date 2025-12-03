@@ -2,16 +2,15 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  # Configuration de base
-  config.vm.box = "ubuntu/jammy64"
   
   # Synchronisation de dossiers
-  config.vm.synced_folder ".", "/vagrant"
+  config.vm.synced_folder ".", "/vagrant", disabled: true
   
   # ========================================
   # Serveur Wazuh (Manager + Indexer + Dashboard)
   # ========================================
   config.vm.define "wazuh-server" do |server|
+    server.vm.box = "ubuntu/jammy64"
     server.vm.hostname = "wazuh-server"
     server.vm.network "private_network", ip: "192.168.56.10"
     
@@ -38,31 +37,42 @@ Vagrant.configure("2") do |config|
   end
   
   # ========================================
-  # Client 01 - Machine avec agent Wazuh
+  # Client Windows - Machine avec agent Wazuh
   # ========================================
-  config.vm.define "client01" do |client|
-    client.vm.hostname = "client01"
-    client.vm.network "private_network", ip: "192.168.56.11"
+  config.vm.define "windows-client" do |client|
+    # Image Windows Server 2022
+    client.vm.box = "gusztavvargadr/windows-server-2022-standard"
+    client.vm.hostname = "windows-client"
+    client.vm.network "private_network", ip: "192.168.56.20"
+    
+    # Configuration WinRM pour Ansible
+    client.vm.communicator = "winrm"
+    client.winrm.username = "vagrant"
+    client.winrm.password = "vagrant"
+    client.winrm.transport = :plaintext
+    client.winrm.basic_auth_only = true
     
     client.vm.provider "virtualbox" do |vb|
-      vb.name = "wazuh-client01"
-      vb.memory = "1024"  # 1GB suffisant pour un agent
-      vb.cpus = 1
+      vb.name = "wazuh-windows-client"
+      vb.memory = "2048"  # 2GB pour Windows
+      vb.cpus = 2
+      vb.gui = false  # Pas d'interface graphique par défaut
+      vb.customize ["modifyvm", :id, "--vram", "128"]
+      vb.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
     end
-  end
-  
-  # ========================================
-  # Client 02 - Machine avec agent Wazuh
-  # ========================================
-  config.vm.define "client02" do |client|
-    client.vm.hostname = "client02"
-    client.vm.network "private_network", ip: "192.168.56.12"
     
-    client.vm.provider "virtualbox" do |vb|
-      vb.name = "wazuh-client02"
-      vb.memory = "1024"  # 1GB suffisant pour un agent
-      vb.cpus = 1
-    end
+    # Message informatif
+    client.vm.post_up_message = <<-MSG
+    ╔══════════════════════════════════════════════════════════╗
+    ║         Client Windows démarré                            ║
+    ║                                                           ║
+    ║  IP: 192.168.56.20                                       ║
+    ║  OS: Windows Server 2022                                 ║
+    ║  User: vagrant / Password: vagrant                       ║
+    ║                                                           ║
+    ║  L'agent Wazuh sera installé via Ansible                 ║
+    ╚══════════════════════════════════════════════════════════╝
+    MSG
   end
   
   # ========================================

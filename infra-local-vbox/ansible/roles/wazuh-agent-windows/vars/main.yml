@@ -1,0 +1,22 @@
+---
+# Variables pour le rôle wazuh-agent-windows
+
+# Version de l'agent Wazuh Windows
+wazuh_agent_version: "4.7.0"
+wazuh_agent_revision: "1"
+
+# URL de téléchargement de l'agent Windows (MSI)
+wazuh_agent_msi_url: "https://packages.wazuh.com/4.x/windows/wazuh-agent-{{ wazuh_agent_version }}-{{ wazuh_agent_revision }}.msi"
+
+# Configuration du Manager Wazuh
+wazuh_manager_ip: "192.168.56.10"
+wazuh_manager_port: 1514
+
+# Nom de l'agent (utilise le hostname par défaut)
+wazuh_agent_name: "{{ ansible_hostname }}"
+
+# Protocole de communication
+wazuh_protocol: "tcp"
+
+# Groupes de l'agent
+wazuh_agent_groups: "windows,default"
