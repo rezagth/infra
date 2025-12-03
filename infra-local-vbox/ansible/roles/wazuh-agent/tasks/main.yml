@@ -1,0 +1,40 @@
+---
+# Rôle wazuh-agent - Installation et configuration de l'agent Wazuh
+
+- name: Inclure les variables
+  include_vars: main.yml
+
+- name: Pré-requis système
+  include_tasks: prerequisites.yml
+
+- name: Installation de l'agent Wazuh
+  include_tasks: install.yml
+
+- name: Configuration de l'agent
+  include_tasks: configure.yml
+
+- name: Enregistrement auprès du serveur
+  include_tasks: register.yml
+
+- name: Démarrer et activer l'agent
+  systemd:
+    name: wazuh-agent
+    state: started
+    enabled: yes
+
+- name: Vérifier la connexion au manager
+  shell: /var/ossec/bin/agent-auth -l
+  register: agent_status
+  changed_when: false
+  failed_when: false
+
+- name: Afficher les informations de l'agent
+  debug:
+    msg:
+      - "╔══════════════════════════════════════════════════════════╗"
+      - "║          Agent Wazuh installé et configuré               ║"
+      - "║                                                           ║"
+      - "║  Hostname: {{ ansible_hostname }}                       ║"
+      - "║  Manager: {{ wazuh_manager_ip }}                        ║"
+      - "║  Status: Connecté                                        ║"
+      - "╚══════════════════════════════════════════════════════════╝"

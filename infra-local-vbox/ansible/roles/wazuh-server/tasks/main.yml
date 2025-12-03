@@ -1,0 +1,37 @@
+---
+# Rôle wazuh-server - Installation et configuration du serveur Wazuh
+# Ce rôle installe : Wazuh Indexer, Wazuh Manager, Wazuh Dashboard
+
+- name: Inclure les variables
+  include_vars: main.yml
+
+- name: Pré-requis système
+  include_tasks: prerequisites.yml
+
+- name: Installation du certificat et configuration SSL
+  include_tasks: certificates.yml
+
+- name: Installation Wazuh Indexer (OpenSearch)
+  include_tasks: install_indexer.yml
+
+- name: Installation Wazuh Manager
+  include_tasks: install_manager.yml
+
+- name: Installation Wazuh Dashboard
+  include_tasks: install_dashboard.yml
+
+- name: Configuration finale
+  include_tasks: configure.yml
+
+- name: Afficher les informations d'accès
+  debug:
+    msg:
+      - "╔══════════════════════════════════════════════════════════╗"
+      - "║          Installation Wazuh terminée !                    ║"
+      - "║                                                           ║"
+      - "║  Dashboard: https://{{ ansible_host }}                   ║"
+      - "║  Utilisateur: {{ wazuh_dashboard_user }}                 ║"
+      - "║  Mot de passe: {{ wazuh_dashboard_password }}            ║"
+      - "║                                                           ║"
+      - "║  API: https://{{ ansible_host }}:55000                   ║"
+      - "╚══════════════════════════════════════════════════════════╝"

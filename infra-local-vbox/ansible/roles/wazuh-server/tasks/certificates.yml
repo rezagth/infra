@@ -1,0 +1,25 @@
+---
+# Gestion des certificats SSL - déjà généré par all-in-one
+# Ce fichier existe pour compatibilité avec main.yml
+
+- name: Vérifier que les certificats existent
+  stat:
+    path: /etc/wazuh-indexer/certs
+  register: certs_dir
+
+- name: Afficher l'état des certificats
+  debug:
+    msg: "Certificats SSL trouvés dans {{ certs_dir.stat.path }}"
+  when: certs_dir.stat.exists
+
+- name: Lister les certificats disponibles
+  find:
+    paths: /etc/wazuh-indexer/certs
+    patterns: "*.pem"
+  register: cert_files
+  when: certs_dir.stat.exists
+
+- name: Afficher les certificats
+  debug:
+    msg: "Certificats: {{ cert_files.files | map(attribute='path') | list }}"
+  when: certs_dir.stat.exists and cert_files.matched > 0

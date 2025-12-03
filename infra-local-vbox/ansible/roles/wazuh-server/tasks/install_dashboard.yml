@@ -1,0 +1,33 @@
+---
+# Installation Wazuh Dashboard - déjà installé par all-in-one
+
+- name: Vérifier que Wazuh Dashboard est installé
+  stat:
+    path: /usr/share/wazuh-dashboard
+  register: dashboard_installed
+
+- name: Vérifier le statut du service wazuh-dashboard
+  systemd:
+    name: wazuh-dashboard
+    state: started
+    enabled: yes
+
+- name: Attendre que le Dashboard soit accessible
+  wait_for:
+    port: 443
+    delay: 10
+    timeout: 120
+
+- name: Tester l'accès au Dashboard
+  uri:
+    url: "https://{{ ansible_default_ipv4.address }}"
+    validate_certs: no
+    status_code: [200, 302, 401]
+  register: dashboard_health
+  retries: 5
+  delay: 10
+  until: dashboard_health is not failed
+
+- name: Afficher l'URL du Dashboard
+  debug:
+    msg: "Dashboard accessible sur: https://{{ ansible_default_ipv4.address }}"

@@ -1,0 +1,102 @@
+<!--
+  Wazuh - Agent configuration
+  Plus d'infos: https://documentation.wazuh.com
+-->
+
+<ossec_config>
+  <client>
+    <server>
+      <address>{{ wazuh_manager_ip }}</address>
+      <port>{{ wazuh_manager_port }}</port>
+      <protocol>{{ wazuh_protocol }}</protocol>
+    </server>
+    <config-profile>ubuntu, ubuntu22, ubuntu22.04</config-profile>
+    <notify_time>10</notify_time>
+    <time-reconnect>60</time-reconnect>
+    <auto_restart>yes</auto_restart>
+    <crypto_method>aes</crypto_method>
+  </client>
+
+  <client_buffer>
+    <disabled>no</disabled>
+    <queue_size>5000</queue_size>
+    <events_per_second>500</events_per_second>
+  </client_buffer>
+
+  <!-- Labels pour identifier l'agent -->
+  <labels>
+{% for label in wazuh_agent_labels %}
+    <label key="{{ label.key }}">{{ label.value }}</label>
+{% endfor %}
+  </labels>
+
+  <!-- File Integrity Monitoring -->
+  <syscheck>
+    <disabled>{{ 'no' if wazuh_agent_config.syscheck.enabled else 'yes' }}</disabled>
+    <frequency>{{ wazuh_agent_config.syscheck.frequency }}</frequency>
+    <scan_on_start>yes</scan_on_start>
+    
+{% for directory in wazuh_agent_config.syscheck.directories %}
+    <directories check_all="yes" realtime="no" report_changes="yes">{{ directory }}</directories>
+{% endfor %}
+
+    <ignore>/etc/mtab</ignore>
+    <ignore>/etc/hosts.deny</ignore>
+    <ignore>/etc/mail/statistics</ignore>
+    <ignore>/etc/random-seed</ignore>
+    <ignore>/etc/random.seed</ignore>
+    <ignore>/etc/adjtime</ignore>
+    <ignore>/etc/httpd/logs</ignore>
+    <ignore>/etc/utmpx</ignore>
+    <ignore>/etc/wtmpx</ignore>
+    <ignore>/etc/cups/certs</ignore>
+    <ignore>/etc/dumpdates</ignore>
+    <ignore>/etc/svc/volatile</ignore>
+
+    <no_diff>/etc/ssl/private.key</no_diff>
+  </syscheck>
+
+  <!-- Rootcheck -->
+  <rootcheck>
+    <disabled>{{ 'no' if wazuh_agent_config.rootcheck.enabled else 'yes' }}</disabled>
+    <check_files>yes</check_files>
+    <check_trojans>yes</check_trojans>
+    <check_dev>yes</check_dev>
+    <check_sys>yes</check_sys>
+    <check_pids>yes</check_pids>
+    <check_ports>yes</check_ports>
+    <check_if>yes</check_if>
+    <frequency>{{ wazuh_agent_config.rootcheck.frequency }}</frequency>
+    <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+  </rootcheck>
+
+  <!-- Log analysis -->
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/ossec/logs/active-responses.log</location>
+  </localfile>
+
+{% for log_file in wazuh_agent_log_files %}
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>{{ log_file }}</location>
+  </localfile>
+{% endfor %}
+
+  <!-- Active Response -->
+  <active-response>
+    <disabled>no</disabled>
+    <ca_store>/var/ossec/etc/wpk_root.pem</ca_store>
+    <ca_verification>yes</ca_verification>
+  </active-response>
+
+  <!-- Security Configuration Assessment -->
+  <sca>
+    <enabled>yes</enabled>
+    <scan_on_start>yes</scan_on_start>
+    <interval>12h</interval>
+    <skip_nfs>yes</skip_nfs>
+  </sca>
+
+</ossec_config>

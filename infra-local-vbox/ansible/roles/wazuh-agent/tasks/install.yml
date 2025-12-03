@@ -1,0 +1,40 @@
+---
+# Installation de l'agent Wazuh
+
+- name: Ajouter la clé GPG du repository Wazuh
+  apt_key:
+    url: https://packages.wazuh.com/key/GPG-KEY-WAZUH
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Ajouter le repository Wazuh
+  apt_repository:
+    repo: "deb https://packages.wazuh.com/{{ wazuh_major_version }}/apt/ stable main"
+    state: present
+    filename: wazuh
+  when: ansible_os_family == "Debian"
+
+- name: Mettre à jour le cache APT
+  apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Installer l'agent Wazuh
+  apt:
+    name: "wazuh-agent={{ wazuh_agent_version }}-*"
+    state: present
+    allow_downgrade: yes
+  when: ansible_os_family == "Debian"
+  environment:
+    WAZUH_MANAGER: "{{ wazuh_manager_ip }}"
+    WAZUH_AGENT_NAME: "{{ wazuh_agent_name }}"
+
+- name: Vérifier l'installation
+  stat:
+    path: /var/ossec/bin/wazuh-control
+  register: agent_installed
+
+- name: Confirmer l'installation
+  debug:
+    msg: "Agent Wazuh installé avec succès"
+  when: agent_installed.stat.exists

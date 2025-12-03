@@ -1,0 +1,34 @@
+---
+# Pré-requis pour l'installation de l'agent Wazuh
+
+- name: Mise à jour du cache APT
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Installation des paquets requis
+  apt:
+    name:
+      - curl
+      - apt-transport-https
+      - lsb-release
+      - gnupg
+      - ca-certificates
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Vérifier la connectivité avec le serveur Wazuh
+  wait_for:
+    host: "{{ wazuh_manager_ip }}"
+    port: "{{ wazuh_agent_authd_port }}"
+    timeout: 30
+    msg: "Impossible de joindre le serveur Wazuh sur {{ wazuh_manager_ip }}:{{ wazuh_agent_authd_port }}"
+
+- name: Afficher les informations de configuration
+  debug:
+    msg:
+      - "Configuration de l'agent:"
+      - "  Manager: {{ wazuh_manager_ip }}"
+      - "  Hostname: {{ ansible_hostname }}"
+      - "  IP: {{ ansible_default_ipv4.address }}"

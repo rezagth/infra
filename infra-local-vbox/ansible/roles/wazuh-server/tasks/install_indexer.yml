@@ -1,0 +1,56 @@
+---
+# Installation de Wazuh avec le script d'installation all-in-one
+
+- name: Télécharger le script d'installation Wazuh all-in-one
+  get_url:
+    url: "https://packages.wazuh.com/{{ wazuh_major_version }}/wazuh-install.sh"
+    dest: /tmp/wazuh-install.sh
+    mode: '0755'
+  register: download_script
+
+- name: Exécuter l'installation all-in-one de Wazuh
+  shell: |
+    bash /tmp/wazuh-install.sh -a -i
+  args:
+    creates: /var/ossec/bin/wazuh-control
+  register: wazuh_install
+  async: 1800
+  poll: 10
+
+- name: Attendre que tous les services démarrent
+  wait_for:
+    port: "{{ item }}"
+    delay: 10
+    timeout: 300
+  loop:
+    - 9200  # Indexer
+    - 55000 # API
+    - 1514  # Manager
+    - 443   # Dashboard
+
+- name: Sauvegarder les credentials d'installation
+  copy:
+    content: "{{ wazuh_install.stdout }}"
+    dest: /root/wazuh-install-credentials.txt
+    mode: '0600'
+  when: wazuh_install.stdout is defined
+
+- name: Extraire le mot de passe admin
+  shell: |
+    grep -oP 'password: \K.*' /root/wazuh-install-credentials.txt | head -1
+  register: extracted_password
+  changed_when: false
+  failed_when: false
+
+- name: Définir le mot de passe récupéré
+  set_fact:
+    wazuh_dashboard_password: "{{ extracted_password.stdout | default('SecurePassword123!') }}"
+
+- name: Afficher les informations d'accès
+  debug:
+    msg:
+      - "Installation Wazuh terminée!"
+      - "Dashboard: https://{{ ansible_default_ipv4.address }}"
+      - "Utilisateur: admin"
+      - "Mot de passe: {{ wazuh_dashboard_password }}"
+      - "Les credentials complets sont dans /root/wazuh-install-credentials.txt"

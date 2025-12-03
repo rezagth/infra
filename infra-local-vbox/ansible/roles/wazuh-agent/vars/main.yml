@@ -1,0 +1,64 @@
+---
+# Variables pour le rôle wazuh-agent
+
+# Version de Wazuh Agent
+wazuh_agent_version: "4.7.0"
+wazuh_major_version: "4.x"
+
+# Configuration du Manager Wazuh
+wazuh_manager_ip: "192.168.56.10"
+wazuh_manager_port: 1514
+wazuh_agent_name: "{{ ansible_hostname }}"
+
+# Protocole de communication
+wazuh_protocol: "tcp"  # tcp ou udp
+
+# Configuration de l'enregistrement
+wazuh_agent_authd_port: 1515
+wazuh_agent_auto_restart: true
+
+# Modules à activer sur l'agent
+wazuh_agent_config:
+  log_format: "plain"
+  
+  # File Integrity Monitoring
+  syscheck:
+    enabled: true
+    frequency: 43200  # 12 heures
+    directories:
+      - /etc
+      - /usr/bin
+      - /usr/sbin
+    
+  # Rootcheck (détection rootkit)
+  rootcheck:
+    enabled: true
+    frequency: 43200
+  
+  # OpenSCAP (évaluation de sécurité)
+  openscap:
+    enabled: false
+  
+  # CIS-CAT (benchmarks de sécurité)
+  ciscat:
+    enabled: false
+  
+  # Osquery integration
+  osquery:
+    enabled: false
+
+# Logs à monitorer
+wazuh_agent_log_files:
+  - /var/log/auth.log
+  - /var/log/syslog
+  - /var/log/dpkg.log
+  - /var/log/kern.log
+
+# Configuration avancée
+wazuh_agent_labels:
+  - key: "environment"
+    value: "local"
+  - key: "type"
+    value: "vagrant"
+  - key: "purpose"
+    value: "testing"

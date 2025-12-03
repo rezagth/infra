@@ -1,0 +1,57 @@
+---
+# Pré-requis système pour Wazuh Server
+
+- name: Mise à jour du cache APT
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Installation des paquets de base
+  apt:
+    name:
+      - curl
+      - apt-transport-https
+      - lsb-release
+      - gnupg
+      - software-properties-common
+      - ca-certificates
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Augmenter les limites système pour Indexer
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'vm.max_map_count', value: '262144' }
+    - { key: 'fs.file-max', value: '65536' }
+
+- name: Créer les répertoires nécessaires
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /etc/wazuh-indexer
+    - /var/ossec
+    - /etc/wazuh-dashboard
+    - "{{ wazuh_certs_dir }}"
+
+- name: Vérifier la mémoire disponible
+  assert:
+    that:
+      - ansible_memtotal_mb >= 3800
+    fail_msg: "Le serveur Wazuh nécessite au moins 4GB de RAM. Actuellement: {{ ansible_memtotal_mb }}MB"
+    success_msg: "Mémoire suffisante: {{ ansible_memtotal_mb }}MB"
+
+- name: Afficher les informations système
+  debug:
+    msg:
+      - "Hostname: {{ ansible_hostname }}"
+      - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "RAM: {{ ansible_memtotal_mb }}MB"
+      - "CPUs: {{ ansible_processor_vcpus }}"
+      - "IP: {{ ansible_default_ipv4.address }}"

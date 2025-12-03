@@ -1,0 +1,9 @@
+---
+# Variables globales pour tous les hôtes Wazuh
+
+# Version de Wazuh
+wazuh_version: "4.7.0"
+wazuh_major_version: "4.x"
+
+# Configuration commune
+ansible_python_interpreter: /usr/bin/python3

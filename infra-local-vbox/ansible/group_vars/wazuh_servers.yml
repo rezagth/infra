@@ -1,0 +1,21 @@
+---
+# Variables spécifiques aux serveurs Wazuh
+
+# Configuration Dashboard
+wazuh_dashboard_user: "admin"
+wazuh_dashboard_password: "ChangeMe123!"  # À modifier après installation
+
+# Configuration Indexer
+wazuh_indexer_cluster_name: "wazuh-local-cluster"
+wazuh_indexer_http_port: 9200
+
+# Configuration Manager
+wazuh_manager_fqdn: "{{ ansible_fqdn }}"
+wazuh_api_port: 55000
+wazuh_manager_port: 1514
+
+# Modules activés
+wazuh_modules:
+  vulnerability_detection: true
+  osquery: false
+  docker_listener: false

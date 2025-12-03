@@ -1,0 +1,52 @@
+---
+# Variables pour le rôle wazuh-server
+
+# Version de Wazuh à installer
+wazuh_version: "4.7.0"
+wazuh_major_version: "4.x"
+
+# Configuration réseau
+wazuh_manager_ip: "{{ ansible_default_ipv4.address }}"
+wazuh_manager_port: 1514
+wazuh_api_port: 55000
+
+# Wazuh Indexer (OpenSearch)
+wazuh_indexer_version: "{{ wazuh_version }}"
+wazuh_indexer_http_port: 9200
+wazuh_indexer_cluster_name: "wazuh-cluster"
+wazuh_indexer_node_name: "{{ ansible_hostname }}"
+
+# Wazuh Dashboard
+wazuh_dashboard_version: "{{ wazuh_version }}"
+wazuh_dashboard_port: 443
+wazuh_dashboard_user: "admin"
+wazuh_dashboard_password: "SecurePassword123!"  # À changer en production
+
+# Certificats SSL
+wazuh_certs_dir: "/etc/wazuh-indexer/certs"
+wazuh_generate_certs: true
+
+# Configuration Manager
+wazuh_manager_config:
+  email_notification: false
+  email_to: "admin@localhost"
+  email_smtp_server: "localhost"
+  email_from: "wazuh@localhost"
+  
+# Firewall
+wazuh_configure_firewall: true
+wazuh_firewall_ports:
+  - 1514/tcp  # Agent connection
+  - 1515/tcp  # Agent enrollment
+  - 55000/tcp # Wazuh API
+  - 9200/tcp  # Indexer
+  - 443/tcp   # Dashboard
+
+# Modules à activer
+wazuh_modules:
+  vulnerability_detection: true
+  osquery: false
+  docker_listener: false
+  aws_s3: false
+  office365: false
+  github: false

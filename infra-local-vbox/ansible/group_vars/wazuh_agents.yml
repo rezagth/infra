@@ -1,0 +1,55 @@
+---
+# Variables spécifiques aux agents Wazuh
+
+# Adresse du serveur Wazuh Manager
+wazuh_manager_ip: "192.168.56.10"
+wazuh_manager_port: 1514
+wazuh_agent_authd_port: 1515
+
+# Nom de l'agent (utilise le hostname par défaut)
+wazuh_agent_name: "{{ ansible_hostname }}"
+
+# Protocole de communication
+wazuh_protocol: "tcp"
+
+# Labels pour identifier les agents
+wazuh_agent_labels:
+  - key: "environment"
+    value: "local"
+  - key: "type"
+    value: "vagrant"
+  - key: "purpose"
+    value: "testing"
+
+# Configuration File Integrity Monitoring
+wazuh_agent_config:
+  log_format: "plain"
+  
+  syscheck:
+    enabled: true
+    frequency: 43200  # 12h
+    directories:
+      - /etc
+      - /usr/bin
+      - /usr/sbin
+      - /home
+  
+  rootcheck:
+    enabled: true
+    frequency: 43200
+  
+  openscap:
+    enabled: false
+  
+  ciscat:
+    enabled: false
+  
+  osquery:
+    enabled: false
+
+# Logs à monitorer
+wazuh_agent_log_files:
+  - /var/log/auth.log
+  - /var/log/syslog
+  - /var/log/dpkg.log
+  - /var/log/kern.log

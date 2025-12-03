@@ -1,0 +1,41 @@
+---
+# Enregistrement de l'agent auprès du serveur Wazuh
+
+- name: Vérifier si l'agent est déjà enregistré
+  stat:
+    path: /var/ossec/etc/client.keys
+  register: client_keys
+
+- name: Lire le fichier client.keys
+  slurp:
+    src: /var/ossec/etc/client.keys
+  register: client_keys_content
+  when: client_keys.stat.exists
+
+- name: Déterminer si l'enregistrement est nécessaire
+  set_fact:
+    needs_registration: "{{ not client_keys.stat.exists or (client_keys_content.content | b64decode | length) < 10 }}"
+
+- name: Enregistrer l'agent auprès du manager
+  shell: |
+    /var/ossec/bin/agent-auth -m {{ wazuh_manager_ip }} -p {{ wazuh_agent_authd_port }} -A {{ wazuh_agent_name }}
+  args:
+    creates: /var/ossec/etc/client.keys
+  when: needs_registration | bool
+  register: registration_result
+  notify: restart wazuh-agent
+
+- name: Attendre quelques secondes après l'enregistrement
+  pause:
+    seconds: 3
+  when: registration_result is changed
+
+- name: Vérifier l'enregistrement
+  shell: /var/ossec/bin/wazuh-control status
+  register: agent_control_status
+  changed_when: false
+  failed_when: false
+
+- name: Afficher le statut de l'enregistrement
+  debug:
+    msg: "{{ 'Agent enregistré avec succès' if registration_result is changed else 'Agent déjà enregistré' }}"

@@ -5,33 +5,73 @@ Vagrant.configure("2") do |config|
   # Configuration de base
   config.vm.box = "ubuntu/jammy64"
   
-  # Configuration réseau privé
-  config.vm.network "private_network", type: "dhcp"
-  
   # Synchronisation de dossiers
   config.vm.synced_folder ".", "/vagrant"
   
-  # Configuration VirtualBox
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "2048"
-    vb.cpus = 2
-  end
-  
-  # VM 1 - Serveur principal
-  config.vm.define "server01" do |server|
-    server.vm.hostname = "server01"
+  # ========================================
+  # Serveur Wazuh (Manager + Indexer + Dashboard)
+  # ========================================
+  config.vm.define "wazuh-server" do |server|
+    server.vm.hostname = "wazuh-server"
     server.vm.network "private_network", ip: "192.168.56.10"
+    
+    # Configuration VirtualBox - Serveur nécessite plus de ressources
+    server.vm.provider "virtualbox" do |vb|
+      vb.name = "wazuh-server"
+      vb.memory = "4096"  # 4GB pour Indexer + Manager + Dashboard
+      vb.cpus = 2
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    end
+    
+    # Message informatif
+    server.vm.post_up_message = <<-MSG
+    ╔══════════════════════════════════════════════════════════╗
+    ║             Serveur Wazuh démarré                         ║
+    ║                                                           ║
+    ║  IP: 192.168.56.10                                       ║
+    ║  Dashboard: https://192.168.56.10                        ║
+    ║  API: https://192.168.56.10:55000                        ║
+    ║                                                           ║
+    ║  Exécutez le playbook Ansible pour installer Wazuh       ║
+    ╚══════════════════════════════════════════════════════════╝
+    MSG
   end
   
-  # VM 2 - Agent de surveillance
-  config.vm.define "agent01" do |agent|
-    agent.vm.hostname = "agent01"
-    agent.vm.network "private_network", ip: "192.168.56.11"
+  # ========================================
+  # Client 01 - Machine avec agent Wazuh
+  # ========================================
+  config.vm.define "client01" do |client|
+    client.vm.hostname = "client01"
+    client.vm.network "private_network", ip: "192.168.56.11"
+    
+    client.vm.provider "virtualbox" do |vb|
+      vb.name = "wazuh-client01"
+      vb.memory = "1024"  # 1GB suffisant pour un agent
+      vb.cpus = 1
+    end
   end
   
-  # Provisionner avec Ansible (optionnel - peut être exécuté manuellement)
+  # ========================================
+  # Client 02 - Machine avec agent Wazuh
+  # ========================================
+  config.vm.define "client02" do |client|
+    client.vm.hostname = "client02"
+    client.vm.network "private_network", ip: "192.168.56.12"
+    
+    client.vm.provider "virtualbox" do |vb|
+      vb.name = "wazuh-client02"
+      vb.memory = "1024"  # 1GB suffisant pour un agent
+      vb.cpus = 1
+    end
+  end
+  
+  # ========================================
+  # Provisioning Ansible (manuel)
+  # ========================================
+  # Décommenter pour provisionner automatiquement avec Ansible
   # config.vm.provision "ansible" do |ansible|
   #   ansible.playbook = "ansible/playbooks/site.yml"
   #   ansible.inventory_path = "ansible/inventories/hosts.ini"
+  #   ansible.limit = "all"
   # end
 end

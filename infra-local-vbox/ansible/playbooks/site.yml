@@ -1,5 +1,10 @@
 ---
-- name: Configuration complète de l'infrastructure
+# ========================================
+# Playbook Principal - Infrastructure Wazuh
+# ========================================
+
+# Phase 1: Configuration de base pour tous les hôtes
+- name: Configuration de base - Tous les hôtes
   hosts: all
   become: true
   gather_facts: true
@@ -14,27 +19,97 @@
     - name: Vérification de la connectivité
       ping:
 
+    - name: Afficher les informations de l'hôte
+      debug:
+        msg:
+          - "Hostname: {{ ansible_hostname }}"
+          - "IP: {{ ansible_default_ipv4.address }}"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
   roles:
     - hardening
 
-- name: Configuration des serveurs
-  hosts: servers
+# Phase 2: Déploiement du serveur Wazuh
+- name: Installation du serveur Wazuh
+  hosts: wazuh_servers
   become: true
+  gather_facts: true
 
   roles:
-    - wazuh
-
-- name: Configuration des agents
-  hosts: agents
-  become: true
-
-  roles:
-    - edr
-    - wazuh
+    - wazuh-server
 
   post_tasks:
-    - name: Redémarrage si nécessaire
-      reboot:
-        msg: "Redémarrage après configuration"
-        test_command: uptime
-      when: ansible_reboot_required is defined and ansible_reboot_required
+    - name: Attendre que le serveur soit complètement opérationnel
+      wait_for:
+        port: "{{ item }}"
+        delay: 5
+        timeout: 300
+      loop:
+        - 1514   # Agent connection
+        - 1515   # Agent enrollment
+        - 55000  # API
+        - 9200   # Indexer
+        - 443    # Dashboard
+
+    - name: Afficher le message de succès
+      debug:
+        msg:
+          - "╔══════════════════════════════════════════════════════════╗"
+          - "║    Serveur Wazuh installé et opérationnel !              ║"
+          - "║                                                           ║"
+          - "║    Dashboard: https://{{ ansible_default_ipv4.address }} ║"
+          - "║    Prêt à recevoir les agents...                         ║"
+          - "╚══════════════════════════════════════════════════════════╝"
+
+# Phase 3: Déploiement des agents Wazuh
+- name: Installation des agents Wazuh sur les clients
+  hosts: wazuh_agents
+  become: true
+  gather_facts: true
+  serial: 2  # Déployer 2 agents en parallèle
+
+  roles:
+    - wazuh-agent
+
+  post_tasks:
+    - name: Vérifier le statut de l'agent
+      shell: /var/ossec/bin/wazuh-control status
+      register: agent_status
+      changed_when: false
+
+    - name: Afficher le statut
+      debug:
+        msg: "Agent {{ ansible_hostname }}: {{ agent_status.stdout_lines }}"
+
+# Phase 4: Vérification finale
+- name: Vérification du déploiement complet
+  hosts: wazuh_servers
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Lister les agents connectés
+      shell: /var/ossec/bin/agent_control -l
+      register: connected_agents
+      changed_when: false
+
+    - name: Afficher les agents connectés
+      debug:
+        msg: "{{ connected_agents.stdout_lines }}"
+
+    - name: Résumé final
+      debug:
+        msg:
+          - ""
+          - "╔══════════════════════════════════════════════════════════╗"
+          - "║        Déploiement Wazuh Terminé avec Succès !           ║"
+          - "╚══════════════════════════════════════════════════════════╝"
+          - ""
+          - "📊 Dashboard: https://{{ ansible_default_ipv4.address }}"
+          - "🔐 Credentials: /root/wazuh-install-credentials.txt"
+          - "📁 Résumé: /root/wazuh-installation-summary.txt"
+          - ""
+          - "Agents connectés:"
+          - "{{ connected_agents.stdout }}"
+          - ""
+

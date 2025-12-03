@@ -1,0 +1,28 @@
+---
+# Installation Wazuh Manager - déjà installé par all-in-one
+
+- name: Vérifier que Wazuh Manager est installé
+  stat:
+    path: /var/ossec/bin/wazuh-control
+  register: manager_installed
+
+- name: Vérifier le statut du service wazuh-manager
+  systemd:
+    name: wazuh-manager
+    state: started
+    enabled: yes
+
+- name: Attendre que le Manager soit prêt
+  wait_for:
+    port: 1514
+    delay: 5
+    timeout: 60
+
+- name: Obtenir la version de Wazuh Manager
+  shell: /var/ossec/bin/wazuh-control info | grep -oP 'WAZUH \K[0-9.]+'
+  register: installed_version
+  changed_when: false
+
+- name: Afficher la version installée
+  debug:
+    msg: "Wazuh Manager v{{ installed_version.stdout }} est opérationnel"

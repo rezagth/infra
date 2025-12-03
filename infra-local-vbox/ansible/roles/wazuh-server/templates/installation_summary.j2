@@ -1,0 +1,60 @@
+╔══════════════════════════════════════════════════════════╗
+║          Installation Wazuh Server Terminée               ║
+╚══════════════════════════════════════════════════════════╝
+
+Date d'installation: {{ ansible_date_time.iso8601 }}
+Hostname: {{ ansible_hostname }}
+IP Address: {{ ansible_default_ipv4.address }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 DASHBOARD WAZUH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+URL:      https://{{ ansible_default_ipv4.address }}
+User:     {{ wazuh_dashboard_user }}
+Password: {{ wazuh_dashboard_password }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 API WAZUH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+URL:      https://{{ ansible_default_ipv4.address }}:55000
+User:     {{ wazuh_dashboard_user }}
+Password: {{ wazuh_dashboard_password }}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📡 SERVICES INSTALLÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Wazuh Manager (Port 1514, 1515)
+✓ Wazuh Indexer (Port 9200)
+✓ Wazuh Dashboard (Port 443)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔐 CONFIGURATION AGENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Manager Address: {{ ansible_default_ipv4.address }}
+Manager Port:    1514
+
+Les agents doivent être configurés pour se connecter à cette adresse.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 NOTES IMPORTANTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Les credentials complets sont dans: /root/wazuh-install-credentials.txt
+• Changez le mot de passe admin en production
+• Certificats SSL dans: /etc/wazuh-indexer/certs/
+• Logs Wazuh Manager: /var/ossec/logs/
+• Configuration Manager: /var/ossec/etc/ossec.conf
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pour vérifier les services:
+  systemctl status wazuh-manager
+  systemctl status wazuh-indexer  
+  systemctl status wazuh-dashboard
+
+Pour voir les agents connectés:
+  /var/ossec/bin/agent_control -l

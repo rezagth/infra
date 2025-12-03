@@ -1,0 +1,57 @@
+---
+# Configuration post-installation
+
+- name: Configurer le pare-feu UFW (si installé)
+  block:
+    - name: Vérifier si UFW est installé
+      command: which ufw
+      register: ufw_check
+      changed_when: false
+      failed_when: false
+
+    - name: Autoriser les ports Wazuh
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop: "{{ wazuh_firewall_ports }}"
+      when: 
+        - ufw_check.rc == 0
+        - wazuh_configure_firewall | bool
+  rescue:
+    - name: Note sur le pare-feu
+      debug:
+        msg: "UFW n'est pas installé ou activé, configuration du pare-feu ignorée"
+
+- name: Créer un fichier de résumé de l'installation
+  template:
+    src: installation_summary.j2
+    dest: /root/wazuh-installation-summary.txt
+    mode: '0644'
+
+- name: Vérifier tous les services Wazuh
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - wazuh-manager
+    - wazuh-indexer
+    - wazuh-dashboard
+
+- name: Récupérer les informations de l'API
+  uri:
+    url: "https://localhost:55000/"
+    user: "{{ wazuh_dashboard_user }}"
+    password: "{{ wazuh_dashboard_password }}"
+    method: GET
+    validate_certs: no
+    status_code: 200
+  register: api_info
+  retries: 3
+  delay: 5
+  until: api_info is not failed
+  ignore_errors: yes
+
+- name: Afficher le statut de l'API
+  debug:
+    msg: "API Wazuh: {{ 'Opérationnelle' if api_info is succeeded else 'Vérification manuelle nécessaire' }}"
